@@ -3,17 +3,27 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Pointonomics - Démo Bamboo Points", layout="wide")
+# Configuration de la page Streamlit
+st.set_page_config(page_title="Points Autonomics - Simulation Streamlit", layout="wide")
 
 # --- Introduction ---
-st.title("Dashboard Interactif - Pointonomics & CityLabs")
+st.title("Simulation du Système Points Autonomics")
 st.markdown("""
-Ce dashboard présente la simulation et l'implémentation du système de Bamboo Points.  
-Il illustre la conversion des anciens Cede Points, la configuration des quêtes, et le suivi des indicateurs clés influençant l'engagement et la rétention des utilisateurs.
+Cette application Streamlit permet de tester et valider le mécanisme de distribution de Bamboo Points.
+Utilisez la sidebar pour configurer les paramètres de simulation et observez les résultats en temps réel.
 """)
 
-# --- Configuration des Quêtes via la Sidebar ---
-st.sidebar.header("Configuration des Quêtes")
+# --- Sidebar : Configuration de Simulation ---
+st.sidebar.header("Paramètres de Simulation")
+
+# Paramètres généraux
+nb_users = st.sidebar.number_input("Nombre d'utilisateurs simulés", min_value=100, max_value=5000, value=1000, step=100)
+nb_weeks = st.sidebar.slider("Nombre de semaines de simulation", min_value=2, max_value=12, value=4)
+weekly_cap = st.sidebar.number_input("Plafond hebdomadaire de points", min_value=50, max_value=1000, value=200)
+
+# Configuration des quêtes
+st.sidebar.subheader("Configuration des Quêtes")
+# Exemple de quêtes par défaut
 default_quests = [
     {"name": "Connexion quotidienne", "points": 1, "probability": 0.9},
     {"name": "Connexion Wallet", "points": 10, "probability": 0.7},
@@ -21,65 +31,67 @@ default_quests = [
     {"name": "Participation Réseaux Sociaux", "points": 50, "probability": 0.3},
 ]
 
-# Nombre d'utilisateurs et nombre de semaines pour la simulation
-nb_users = st.sidebar.number_input("Nombre d'utilisateurs simulés", min_value=100, max_value=5000, value=1000, step=100)
-nb_weeks = st.sidebar.slider("Nombre de semaines", min_value=2, max_value=12, value=4)
-
-# Affichage de la configuration des quêtes
+# Possibilité d'éditer manuellement le nombre de quêtes (pour simplification, on utilise la liste par défaut)
 quests_df = pd.DataFrame(default_quests)
-st.subheader("Quêtes Configurées")
-st.dataframe(quests_df)
+st.sidebar.dataframe(quests_df)
 
-# --- Simulation de Distribution des Bamboo Points ---
-st.header("Simulation de Distribution des Bamboo Points")
+# --- Moteur de Simulation ---
+st.header("Résultats de la Simulation")
 
-def simulate_points(quests, nb_users=1000, weeks=4):
+@st.cache(suppress_st_warning=True)
+def simulate_points(quests, nb_users, weeks, weekly_cap):
     simulation = []
+    # Pour chaque utilisateur simulé
     for user in range(nb_users):
         total_points = 0
+        # Simulation semaine par semaine
         for week in range(weeks):
             week_points = 0
+            # Pour chaque quête configurée
             for quest in quests:
                 if np.random.rand() < quest['probability']:
                     week_points += quest['points']
-            # Application d'un plafond hebdomadaire de 200 points
-            week_points = min(week_points, 200)
+            week_points = min(week_points, weekly_cap)
             total_points += week_points
         simulation.append(total_points)
     return np.array(simulation)
 
-points_data = simulate_points(default_quests, nb_users=nb_users, weeks=nb_weeks)
+points_data = simulate_points(default_quests, nb_users, nb_weeks, weekly_cap)
 mean_points = np.mean(points_data)
 std_points = np.std(points_data)
 
-st.write(f"**Points moyens par utilisateur sur {nb_weeks} semaines :** {mean_points:.2f} ± {std_points:.2f}")
+st.markdown(f"**Points moyens par utilisateur sur {nb_weeks} semaines :** {mean_points:.2f} ± {std_points:.2f}")
 
-# Visualisation de la répartition des points
+# --- Visualisation ---
+st.subheader("Distribution des Bamboo Points")
 fig, ax = plt.subplots(figsize=(10, 5))
 ax.hist(points_data, bins=30, color="skyblue", edgecolor="black")
 ax.set_title("Répartition des Bamboo Points accumulés")
-ax.set_xlabel("Points totaux accumulés")
+ax.set_xlabel("Points totaux")
 ax.set_ylabel("Nombre d'utilisateurs")
 st.pyplot(fig)
 
-# --- Suivi des Indicateurs Clés (KPI) pour CityLabs ---
-st.header("Indicateurs Clés d'Engagement & Rétention")
+# --- Indicateurs Clés (KPI) ---
+st.subheader("Indicateurs Clés")
 kpi_data = {
-    "DAU": np.random.randint(500, 1500),
-    "WAU": np.random.randint(2000, 5000),
-    "Taux de Rétention (7 jours)": f"{np.random.randint(30, 60)}%",
-    "Taux de Rétention (30 jours)": f"{np.random.randint(20, 40)}%",
-    "Quêtes Complétées / Utilisateur": round(np.mean(points_data) / 20, 2),
-    "Utilisation du Shop (%)": f"{np.random.randint(10, 30)}%",
+    "DAU (simulé)": np.random.randint(500, 1500),
+    "WAU (simulé)": np.random.randint(2000, 5000),
+    "Taux de Rétention (7 jours, simulé)": f"{np.random.randint(30,60)}%",
+    "Taux de Rétention (30 jours, simulé)": f"{np.random.randint(20,40)}%",
+    "Quêtes complétées / Utilisateur": round(mean_points / 20, 2),  # Exemple de calcul
 }
-
 kpi_df = pd.DataFrame(kpi_data, index=["Valeur"])
 st.dataframe(kpi_df)
 
-# --- Présentation des Prochaines Étapes Stratégiques ---
-st.header("Prochaines Étapes et Voie d'Amélioration")
+# --- Section Feedback et Axes d'Amélioration ---
+st.header("Axes d'Amélioration et Prochaines Étapes")
 st.markdown("""
-- **Validation des ratios de conversion :** Finaliser la méthode de conversion des anciens Cede Points en Bamboo Points en collaboration avec l’équipe "Silly Points".
-- **Simulation Économique Avancée :** Déployer des simulations Monte Carlo pour affiner la distribution des Bamboo Points et éviter une inflation excessive.
-- **Déploiement Pilote & Tests Utilisateurs :** Mettre
+- **Test de Paramètres :** Expérimentez différentes valeurs pour le nombre d’utilisateurs, le nombre de semaines, et le plafond hebdomadaire.
+- **Ajout de Quêtes :** Possibilité d’ajouter, modifier ou supprimer des quêtes pour tester l’impact sur la distribution.
+- **Scénarios Multiples :** Simuler différents scénarios d’engagement (optimiste vs pessimiste).
+- **Export des Données :** Option pour exporter les résultats sous forme de CSV pour analyse externe.
+""")
+
+st.markdown("---")
+st.markdown("Cette application Streamlit sert de prototype pour le système Points Autonomics et permet une itération rapide afin de valider et affiner les mécaniques proposées.")
 
